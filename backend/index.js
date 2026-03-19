@@ -28,8 +28,8 @@ app.use('/api', apiRoutes);
 const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
 
-// Wildcard route to serve index.html for all non-API requests (SPA fallback)
-app.get('/*', (req, res) => {
+// SPA fallback (Express 5 compatible catch-all)
+app.use((req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ message: 'API route not found' });
   }
