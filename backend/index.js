@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 
@@ -23,8 +24,16 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
-app.get('/', (req, res) => {
-  res.send('TechnoZone Backend API is Running (MongoDB)');
+// Serve static files from the frontend/dist directory
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Wildcard route to serve index.html for all non-API requests (SPA fallback)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: 'API route not found' });
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 
