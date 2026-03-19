@@ -16,6 +16,10 @@ const connectDB = require('./config/db');
 // Connect to Database
 connectDB();
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'TechnoZone API is running with MongoDB' });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
@@ -23,9 +27,6 @@ app.get('/', (req, res) => {
   res.send('TechnoZone Backend API is Running (MongoDB)');
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'TechnoZone API is running with MongoDB' });
-});
 
 const PORT = process.env.PORT || 5000;
 
