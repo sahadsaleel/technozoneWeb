@@ -1,7 +1,8 @@
 {
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "start": "concurrently \"npm start --prefix backend\" \"npm start --prefix frontend\"",
+    "build": "npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend",
+    "start": "npm start --prefix backend",
     "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend"
   },
