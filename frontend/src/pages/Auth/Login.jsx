@@ -219,7 +219,23 @@ export default function Login() {
               Code sent to <strong style={{ color:'#1E293B' }}>{email}</strong>
             </div>
 
-            {/* Removed debug OTP display */}
+            {/* Debug OTP Display (Only during testing/dev) */}
+            {debugOtp && (
+              <div style={{
+                background: '#FFF7ED',
+                border: '1px dashed #FB923C',
+                borderRadius: 12,
+                padding: '.6rem',
+                textAlign: 'center',
+                fontSize: '.85rem',
+                fontWeight: 700,
+                color: '#EA580C',
+                marginBottom: '.5rem',
+                animation: 'pulse 2s infinite'
+              }}>
+                TEST MODE: Use Code <span style={{ fontSize: '1.1rem', letterSpacing: '2px' }}>{debugOtp}</span>
+              </div>
+            )}
 
             {/* OTP boxes */}
             <div style={{ display:'flex', gap:6 }}>

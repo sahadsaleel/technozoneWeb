@@ -83,26 +83,30 @@ const loginUser = async (req, res) => {
         otpExpires 
       });
 
-      // Send OTP via email
+      // Send OTP via email (Non-blocking to prevent UI hang)
       try {
         if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-          await sendEmail({
+          // Fire and forget (don't await) to prevent blocking the response
+          sendEmail({
              email: user.email,
              subject: 'TechnoZone - Login OTP Verification',
              message: `Your OTP for login is: ${otp}. It is valid for 10 minutes.`,
              html: `<p>Your OTP for TechnoZone login is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
-          });
-          require('console').log(`OTP sent to ${email}`);
+          }).catch(err => console.error('Delayed Email Error:', err));
+          
+          console.log(`OTP sending initiated for ${email}`);
         } else {
-           require('console').log(`DEV MODE: OTP for ${email} is ${otp}`);
+           console.log(`DEV MODE: OTP for ${email} is ${otp}`);
         }
       } catch(err) {
-        console.error('Email could not be sent', err);
+        console.error('Email initiation failed', err);
       }
 
       res.json({
         requiresOTP: true,
-        message: 'OTP sent to email'
+        message: 'OTP sent to email',
+        // Include OTP in debug field if in dev or if DEBUG_AUTH is enabled
+        debug: (process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true') ? { otp } : undefined
       });
     } else {
       res.status(401).json({ message: 'Invalid credentials' });
@@ -131,25 +135,27 @@ const resendOTP = async (req, res) => {
       otpExpires 
     });
 
-    // Send OTP via email
+    // Send OTP via email (Non-blocking)
     try {
       if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-        await sendEmail({
+        sendEmail({
            email: user.email,
            subject: 'TechnoZone - Resent OTP Verification',
            message: `Your new OTP for login is: ${otp}`,
            html: `<p>Your new OTP for TechnoZone login is: <b>${otp}</b></p>`
-        });
-        require('console').log(`OTP resent to ${email}`);
+        }).catch(err => console.error('Delayed Resend Email Error:', err));
+
+        console.log(`OTP resending initiated for ${email}`);
       } else {
-        require('console').log(`DEV MODE: OTP resent for ${email} is ${otp}`);
+        console.log(`DEV MODE: OTP resent for ${email} is ${otp}`);
       }
     } catch(err) {
-      console.error('Email could not be sent', err);
+      console.error('Email resend initiation failed', err);
     }
 
     res.json({ 
-      message: 'New OTP sent'
+      message: 'New OTP sent',
+      debug: (process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true') ? { otp } : undefined
     });
   } catch (error) {
     console.error(error);
