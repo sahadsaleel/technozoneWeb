@@ -11,7 +11,7 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(0);
-  const [debugOtp, setDebugOtp] = useState('');
+// removed debugOtp state
 
   const { login, verifyOTP, resendOTP, loading, error, clearError } = useAuth();
   const { showToast } = useApp();
@@ -35,7 +35,7 @@ export default function Login() {
     if (res?.requiresOTP) {
       setOtpSent(true);
       startTimer();
-      if (res.debug?.otp) setDebugOtp(res.debug.otp);
+// debugOtp update removed
       showToast('OTP sent to your email', 'success');
     } else if (res?.success) {
       navigate('/');
@@ -47,7 +47,6 @@ export default function Login() {
     const res = await resendOTP(email);
     if (res.success) {
       startTimer();
-      if (res.debug?.otp) setDebugOtp(res.debug.otp);
       showToast('New OTP sent!', 'success');
     }
   };
@@ -219,23 +218,7 @@ export default function Login() {
               Code sent to <strong style={{ color:'#1E293B' }}>{email}</strong>
             </div>
 
-            {/* Debug OTP Display (Only during testing/dev) */}
-            {debugOtp && (
-              <div style={{
-                background: '#FFF7ED',
-                border: '1px dashed #FB923C',
-                borderRadius: 12,
-                padding: '.6rem',
-                textAlign: 'center',
-                fontSize: '.85rem',
-                fontWeight: 700,
-                color: '#EA580C',
-                marginBottom: '.5rem',
-                animation: 'pulse 2s infinite'
-              }}>
-                TEST MODE: Use Code <span style={{ fontSize: '1.1rem', letterSpacing: '2px' }}>{debugOtp}</span>
-              </div>
-            )}
+// TEST MODE UI block removed
 
             {/* OTP boxes */}
             <div style={{ display:'flex', gap:6 }}>

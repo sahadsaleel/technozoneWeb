@@ -104,9 +104,7 @@ const loginUser = async (req, res) => {
 
       res.json({
         requiresOTP: true,
-        message: 'OTP sent to email',
-        // Include OTP in debug field if in dev or if DEBUG_AUTH is enabled
-        debug: (process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true') ? { otp } : undefined
+        message: 'OTP sent to email'
       });
     } else {
       res.status(401).json({ message: 'Invalid credentials' });
@@ -154,8 +152,7 @@ const resendOTP = async (req, res) => {
     }
 
     res.json({ 
-      message: 'New OTP sent',
-      debug: (process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true') ? { otp } : undefined
+      message: 'New OTP sent'
     });
   } catch (error) {
     console.error(error);
