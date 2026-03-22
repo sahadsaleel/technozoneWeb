@@ -84,22 +84,27 @@ const loginUser = async (req, res) => {
       });
 
       // Send OTP via email (Non-blocking to prevent UI hang)
+      // Send OTP via email
       try {
         if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-          // Fire and forget (don't await) to prevent blocking the response
-          sendEmail({
+          console.log(`🔍 Environment has email credentials. Initiating send for ${email}...`);
+          
+          // Using await to ensure we catch any immediate connection errors
+          await sendEmail({
              email: user.email,
              subject: 'TechnoZone - Login OTP Verification',
              message: `Your OTP for login is: ${otp}. It is valid for 10 minutes.`,
              html: `<p>Your OTP for TechnoZone login is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
-          }).catch(err => console.error('Delayed Email Error:', err));
+          });
           
-          console.log(`OTP sending initiated for ${email}`);
+          console.log(`📨 OTP send completed for ${email}`);
         } else {
-           console.log(`DEV MODE: OTP for ${email} is ${otp}`);
+           console.log(`⚠️ EMAIL CREDENTIALS MISSING. OTP for ${email} is ${otp}`);
         }
       } catch(err) {
-        console.error('Email initiation failed', err);
+        console.error('📧 CRITICAL: Email delivery failed during login:', err.message);
+        // We still let the user proceed to the verification screen 
+        // in case they want to retry or check logs
       }
 
       res.json({
@@ -133,22 +138,22 @@ const resendOTP = async (req, res) => {
       otpExpires 
     });
 
-    // Send OTP via email (Non-blocking)
+    // Send OTP via email (Awaiting for logging)
     try {
       if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-        sendEmail({
+        console.log(`🔍 Resending OTP to ${email}...`);
+        await sendEmail({
            email: user.email,
            subject: 'TechnoZone - Resent OTP Verification',
            message: `Your new OTP for login is: ${otp}`,
            html: `<p>Your new OTP for TechnoZone login is: <b>${otp}</b></p>`
-        }).catch(err => console.error('Delayed Resend Email Error:', err));
-
-        console.log(`OTP resending initiated for ${email}`);
+        });
+        console.log(`📨 Resent OTP successfully for ${email}`);
       } else {
-        console.log(`DEV MODE: OTP resent for ${email} is ${otp}`);
+        console.log(`⚠️ EMAIL CREDENTIALS MISSING for Resend. OTP for ${email} is ${otp}`);
       }
     } catch(err) {
-      console.error('Email resend initiation failed', err);
+      console.error('📧 CRITICAL: Email delivery failed during resend:', err.message);
     }
 
     res.json({ 
