@@ -202,9 +202,38 @@ const verifyOTP = async (req, res) => {
   }
 };
 
+// @desc    Test Email functionality
+// @route   POST /api/auth/test-email
+// @access  Public (for debugging)
+const testEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    console.log(`🧪 Test email requested for: ${email}`);
+    const info = await sendEmail({
+      email,
+      subject: 'TechnoZone - Nodemailer Test',
+      message: 'This is a test email from TechnoZone to verify Nodemailer configuration.',
+      html: '<h1>TechnoZone Test</h1><p>If you see this, Nodemailer is working!</p>'
+    });
+
+    res.json({ message: 'Test email sent successfully', info });
+  } catch (error) {
+    console.error('🧪 TEST EMAIL ERROR:', error);
+    res.status(500).json({ 
+      message: 'Test email failed', 
+      error: error.message,
+      code: error.code,
+      command: error.command
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   verifyOTP,
-  resendOTP
+  resendOTP,
+  testEmail
 };
