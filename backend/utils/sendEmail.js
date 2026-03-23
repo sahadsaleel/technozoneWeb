@@ -1,34 +1,23 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY || 're_HyEWNgaD_2a8pyamRtx6VoCUtgX75VRMu');
 
 const sendEmail = async (options) => {
-  console.log(`📧 Attempting to send email to: ${options.email}`);
+  console.log(`📧 Attempting to send email via Resend to: ${options.email}`);
   
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USERNAME,
-      pass: process.env.EMAIL_PASSWORD
-    },
-    // Keep timeouts but be generous
-    connectionTimeout: 15000, 
-    greetingTimeout: 15000,
-    socketTimeout: 15000
-  });
-
-  const mailOptions = {
-    from: `"TechnoZone Support" <${process.env.EMAIL_USERNAME}>`,
-    to: options.email,
-    subject: options.subject,
-    text: options.message,
-    html: options.html
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully: ${info.messageId}`);
-    return info;
+    const data = await resend.emails.send({
+      from: 'TechnoZone <onboarding@resend.dev>',
+      to: options.email,
+      subject: options.subject,
+      html: options.html,
+      text: options.message
+    });
+    
+    console.log(`✅ Email sent successfully via Resend: ${data.id}`);
+    return data;
   } catch (error) {
-    console.error(`❌ Nodemailer Error for ${options.email}:`, error);
+    console.error(`❌ Resend Error for ${options.email}:`, error);
     throw error;
   }
 };
