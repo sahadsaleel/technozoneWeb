@@ -59,16 +59,31 @@ app.listen(PORT, () => {
     
     // Test network connectivity to Gmail SMTP
     const net = require('net');
-    const client = net.connect(587, 'smtp.gmail.com', () => {
+    
+    // Check Port 587
+    const client587 = net.connect(587, 'smtp.gmail.com', () => {
       console.log('✅ Network connectivity: Able to reach smtp.gmail.com on port 587');
-      client.end();
+      client587.end();
     });
-    client.on('error', (err) => {
+    client587.on('error', (err) => {
       console.log(`❌ Network connectivity FAILURE: Cannot reach smtp.gmail.com:587 - ${err.message}`);
     });
-    client.setTimeout(5000, () => {
-      console.log('❌ Network connectivity TIMEOUT: smtp.gmail.com:587 is unreachable (Firewall?)');
-      client.destroy();
+    client587.setTimeout(5000, () => {
+      console.log('❌ Network connectivity TIMEOUT: smtp.gmail.com:587 is unreachable');
+      client587.destroy();
+    });
+
+    // Check Port 465
+    const client465 = net.connect(465, 'smtp.gmail.com', () => {
+      console.log('✅ Network connectivity: Able to reach smtp.gmail.com on port 465');
+      client465.end();
+    });
+    client465.on('error', (err) => {
+      console.log(`❌ Network connectivity FAILURE: Cannot reach smtp.gmail.com:465 - ${err.message}`);
+    });
+    client465.setTimeout(5000, () => {
+      console.log('❌ Network connectivity TIMEOUT: smtp.gmail.com:465 is unreachable');
+      client465.destroy();
     });
 
   } else {
