@@ -90,12 +90,13 @@ const loginUser = async (req, res) => {
           console.log(`🔍 Environment has email credentials. Initiating send for ${email}...`);
           
           // Using await to ensure we catch any immediate connection errors
-          await sendEmail({
+          // Fire and forget (don't await) to prevent blocking the response
+          sendEmail({
              email: user.email,
              subject: 'TechnoZone - Login OTP Verification',
              message: `Your OTP for login is: ${otp}. It is valid for 10 minutes.`,
              html: `<p>Your OTP for TechnoZone login is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
-          });
+          }).catch(err => console.error('📧 Delayed Login Email Error:', err));
           
           console.log(`📨 OTP send completed for ${email}`);
         } else {
@@ -142,12 +143,12 @@ const resendOTP = async (req, res) => {
     try {
       if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
         console.log(`🔍 Resending OTP to ${email}...`);
-        await sendEmail({
+        sendEmail({
            email: user.email,
            subject: 'TechnoZone - Resent OTP Verification',
            message: `Your new OTP for login is: ${otp}`,
            html: `<p>Your new OTP for TechnoZone login is: <b>${otp}</b></p>`
-        });
+        }).catch(err => console.error('📧 Delayed Resend Error:', err));
         console.log(`📨 Resent OTP successfully for ${email}`);
       } else {
         console.log(`⚠️ EMAIL CREDENTIALS MISSING for Resend. OTP for ${email} is ${otp}`);

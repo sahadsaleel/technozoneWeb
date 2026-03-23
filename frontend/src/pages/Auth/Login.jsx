@@ -11,7 +11,7 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(0);
-// removed debugOtp state
+
 
   const { login, verifyOTP, resendOTP, loading, error, clearError } = useAuth();
   const { showToast } = useApp();
@@ -35,7 +35,7 @@ export default function Login() {
     if (res?.requiresOTP) {
       setOtpSent(true);
       startTimer();
-// debugOtp update removed
+
       showToast('OTP sent to your email', 'success');
     } else if (res?.success) {
       navigate('/');
@@ -217,8 +217,6 @@ export default function Login() {
             }}>
               Code sent to <strong style={{ color:'#1E293B' }}>{email}</strong>
             </div>
-
-// TEST MODE UI block removed
 
             {/* OTP boxes */}
             <div style={{ display:'flex', gap:6 }}>
