@@ -56,6 +56,21 @@ app.listen(PORT, () => {
   // Diagnostic check for Email credentials
   if (process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD) {
     console.log(`✅ Email configuration found: ${process.env.EMAIL_USERNAME}`);
+    
+    // Test network connectivity to Gmail SMTP
+    const net = require('net');
+    const client = net.connect(587, 'smtp.gmail.com', () => {
+      console.log('✅ Network connectivity: Able to reach smtp.gmail.com on port 587');
+      client.end();
+    });
+    client.on('error', (err) => {
+      console.log(`❌ Network connectivity FAILURE: Cannot reach smtp.gmail.com:587 - ${err.message}`);
+    });
+    client.setTimeout(5000, () => {
+      console.log('❌ Network connectivity TIMEOUT: smtp.gmail.com:587 is unreachable (Firewall?)');
+      client.destroy();
+    });
+
   } else {
     console.log('❌ CRITICAL: Email configuration MISSING (Check Environment Variables)');
   }
