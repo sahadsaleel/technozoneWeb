@@ -87,9 +87,8 @@ const loginUser = async (req, res) => {
       // Send OTP via email
       try {
         if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-          console.log(`🔍 Environment has email credentials. Initiating send for ${email}...`);
+          console.log(`🔍 Credentials found (${process.env.EMAIL_USERNAME}). Initiating send for ${email}...`);
           
-          // Using await to ensure we catch any immediate connection errors
           // Fire and forget (don't await) to prevent blocking the response
           sendEmail({
              email: user.email,
@@ -98,9 +97,9 @@ const loginUser = async (req, res) => {
              html: `<p>Your OTP for TechnoZone login is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
           }).catch(err => console.error('📧 Delayed Login Email Error:', err));
           
-          console.log(`📨 OTP send completed for ${email}`);
+          console.log(`📨 OTP send request handed over to transporter for ${email}`);
         } else {
-           console.log(`⚠️ EMAIL CREDENTIALS MISSING. OTP for ${email} is ${otp}`);
+           console.log(`⚠️ EMAIL CREDENTIALS MISSING. Checked env but found no username/password. Logging OTP to console: ${otp}`);
         }
       } catch(err) {
         console.error('📧 CRITICAL: Email delivery failed during login:', err.message);
