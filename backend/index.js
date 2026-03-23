@@ -14,6 +14,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -27,9 +28,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TechnoZone API is running with MongoDB' });
 });
 
-// Root Route
+// Root Route (with simple test form)
 app.get('/', (req, res) => {
-  res.send('🚀 TechnoZone API is running...');
+  res.send(`
+    <style>body{font-family:sans-serif;padding:2rem;line-height:1.5;}</style>
+    <h1>🚀 TechnoZone API is running</h1>
+    <p>Status: <b>Live</b></p>
+    <hr/>
+    <h3>Diagnostic Email Test</h3>
+    <form action="/api/auth/test-email" method="POST">
+      <input type="email" name="email" placeholder="enter your email" required style="padding:0.5rem;width:250px;">
+      <button type="submit" style="padding:0.5rem 1rem;cursor:pointer;">Send Test Email</button>
+    </form>
+    <p><small>Check Render logs if the test fails.</small></p>
+  `);
 });
 
 app.use('/api/auth', authRoutes);
