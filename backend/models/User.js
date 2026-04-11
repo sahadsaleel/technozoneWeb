@@ -1,14 +1,11 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  username: { type: String, required: true, unique: true, index: true },
+  password_hash: { type: String, required: true },
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
   role: { type: String, default: 'admin' },
-  isVerified: { type: Boolean, default: false },
-  otp: { type: String },
-  otpExpires: { type: Date }
+  created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

@@ -31,10 +31,10 @@ api.interceptors.response.use(
 // Auth
 export const login    = (d) => api.post('/auth/login', d);
 export const register = (d) => api.post('/auth/register', d);
-export const verifyOTP= (d) => api.post('/auth/verify-otp', d);
+export const logout   = () => api.post('/auth/logout');
+export const getMe    = () => api.get('/auth/me');
 export const forgotPassword = (d) => api.post('/auth/forgot-password', d);
 export const resetPassword  = (d) => api.post('/auth/reset-password', d);
-export const resendOTP = (d) => api.post('/auth/resend-otp', d);
 
 // Sales
 export const getSales   = (p) => api.get('/sales', { params: p });

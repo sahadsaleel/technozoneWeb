@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Edit2, Box, Save, DollarSign, Tag } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useApp } from '../../context/AppContext';
 import * as api from '../../services/api';
 
@@ -12,6 +13,9 @@ export default function Products() {
   const [formData, setFormData] = useState({
     name: '', purchasePrice: '', sellingPrice: ''
   });
+  const [editingId, setEditingId] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
   const { showToast } = useApp();
 
   useEffect(() => {
@@ -32,24 +36,48 @@ export default function Products() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.createProduct(formData);
-      showToast('Product added!', 'success');
+      if (editingId) {
+        await api.updateProduct(editingId, formData);
+        showToast('Product updated!', 'success');
+      } else {
+        await api.createProduct(formData);
+        showToast('Product added!', 'success');
+      }
       setModalOpen(false);
+      setEditingId(null);
       setFormData({ name: '', purchasePrice: '', sellingPrice: '' });
       fetchProducts();
     } catch (err) { 
-      showToast(err.response?.data?.message || 'Error adding product', 'error'); 
+      showToast(err.response?.data?.message || 'Error saving product', 'error'); 
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this product?')) return;
+  const handleEdit = (p) => {
+    setEditingId(p._id);
+    setFormData({
+      name: p.name || '',
+      purchasePrice: p.purchasePrice || '',
+      sellingPrice: p.sellingPrice || ''
+    });
+    setModalOpen(true);
+  };
+
+  const confirmDelete = (id) => {
+    setItemToDelete(id);
+    setConfirmOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
     try { 
-      await api.deleteProduct(id); 
+      await api.deleteProduct(itemToDelete); 
       showToast('Product deleted', 'success'); 
       fetchProducts(); 
     } catch (err) { 
       showToast('Failed to delete', 'error'); 
+    } finally {
+      setItemToDelete(null);
+      setConfirmOpen(false);
     }
   };
 
@@ -112,8 +140,8 @@ export default function Products() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:'.5rem', marginTop:'.6rem' }}>
-                  <button className="clay-btn-icon" title="Edit"><Edit2 size={14} /></button>
-                  <button className="clay-btn-icon danger" onClick={() => handleDelete(p._id)} title="Delete"><Trash2 size={14} /></button>
+                  <button className="clay-btn-icon" onClick={() => handleEdit(p)} title="Edit"><Edit2 size={14} /></button>
+                  <button className="clay-btn-icon danger" onClick={() => confirmDelete(p._id)} title="Delete"><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
@@ -144,8 +172,8 @@ export default function Products() {
                     </td>
                     <td style={{ textAlign:'right' }}>
                       <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
-                        <button className="clay-btn-icon" title="Edit"><Edit2 size={14} /></button>
-                        <button className="clay-btn-icon danger" onClick={() => handleDelete(p._id)} title="Delete"><Trash2 size={14} /></button>
+                        <button className="clay-btn-icon" onClick={() => handleEdit(p)} title="Edit"><Edit2 size={14} /></button>
+                        <button className="clay-btn-icon danger" onClick={() => confirmDelete(p._id)} title="Delete"><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -162,7 +190,15 @@ export default function Products() {
       </button>
 
       {/* Modal */}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Add New Product">
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={() => {
+          setModalOpen(false);
+          setEditingId(null);
+          setFormData({ name: '', purchasePrice: '', sellingPrice: '' });
+        }} 
+        title={editingId ? "Edit Product" : "Add New Product"}
+      >
         <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:'.85rem' }}>
           <div className="clay-field">
             <label className="clay-label">Product Name</label>
@@ -200,13 +236,25 @@ export default function Products() {
 
           <div style={{ display:'flex', gap:'.75rem', marginTop:'.5rem' }}>
             <button type="button" className="clay-btn clay-btn-ghost" style={{ flex:1 }}
-              onClick={() => setModalOpen(false)}>Cancel</button>
+              onClick={() => {
+                setModalOpen(false);
+                setEditingId(null);
+                setFormData({ name: '', purchasePrice: '', sellingPrice: '' });
+              }}>Cancel</button>
             <button type="submit" className="clay-btn clay-btn-blue" style={{ flex:1 }}>
-              <Save size={16} /> Save Product
+              <Save size={16} /> {editingId ? "Update Product" : "Save Product"}
             </button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Product?"
+        message="This action cannot be undone. Are you sure you want to delete this product from your catalog?"
+      />
     </div>
   );
 }

@@ -28,19 +28,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TechnoZone API is running with MongoDB' });
 });
 
-// Root Route (with simple test form)
+// Root Route 
 app.get('/', (req, res) => {
   res.send(`
     <style>body{font-family:sans-serif;padding:2rem;line-height:1.5;}</style>
     <h1>🚀 TechnoZone API is running</h1>
     <p>Status: <b>Live</b></p>
-    <hr/>
-    <h3>Diagnostic Email Test</h3>
-    <form action="/api/auth/test-email" method="POST">
-      <input type="email" name="email" placeholder="enter your email" required style="padding:0.5rem;width:250px;">
-      <button type="submit" style="padding:0.5rem 1rem;cursor:pointer;">Send Test Email</button>
-    </form>
-    <p><small>Check Render logs if the test fails.</small></p>
   `);
 });
 
@@ -52,13 +45,4 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT} (MongoDB)`);
-  
-  // Diagnostic check for Email credentials (Resend)
-  const resendKey = process.env.RESEND_API_KEY || 're_HyEWNgaD_2a8pyamRtx6VoCUtgX75VRMu';
-  if (resendKey) {
-    console.log(`✅ Resend API configuration found: ${resendKey.substring(0, 10)}...`);
-    // No network check needed for HTTPS API usually, but we could ping resend.com
-  } else {
-    console.log('❌ CRITICAL: RESEND_API_KEY MISSING');
-  }
 });

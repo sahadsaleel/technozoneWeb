@@ -1,43 +1,60 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as api from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-  });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const clearError = () => setError('');
 
-  const login = useCallback(async (email, password) => {
-    setLoading(true); setError('');
-    try {
-      const res = await api.login({ email, password });
-      if (res.data.requiresOTP) {
-        setLoading(false);
-        return { requiresOTP: true, email };
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await api.getMe();
+          setUser(res.data);
+        } catch (e) {
+          localStorage.removeItem('token');
+        }
       }
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      setLoading(false);
+    };
+
+    initAuth();
+  }, []);
+
+  const login = useCallback(async (username, password) => {
+    setLoading(true); 
+    setError('');
+    try {
+      const res = await api.login({ username, password });
+      
+      localStorage.setItem('token', res.data.access_token);
+      // Not storing refresh_token in localStorage explicitly unless required, but let's store it
+      localStorage.setItem('refresh_token', res.data.refresh_token);
+      
       setUser(res.data.user);
       setLoading(false);
       return { success: true };
     } catch (e) {
-      setError(e.response?.data?.message || 'Login failed');
+      // Return 401 generic failure explicitly
+      setError('Invalid username or password'); 
       setLoading(false);
       return { success: false };
     }
   }, []);
 
   const register = useCallback(async (data) => {
-    setLoading(true); setError('');
+    setLoading(true); 
+    setError('');
     try {
       const res = await api.register(data);
       setLoading(false);
-      return { success: true, email: data.email, message: res.data.message };
+      return { success: true, message: res.data.message };
     } catch (e) {
       setError(e.response?.data?.message || 'Registration failed');
       setLoading(false);
@@ -45,44 +62,20 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const verifyOTP = useCallback(async (email, otp) => {
-    setLoading(true); setError('');
+  const logout = useCallback(async () => {
     try {
-      const res = await api.verifyOTP({ email, otp });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      setLoading(false);
-      return { success: true };
+      await api.logout();
     } catch (e) {
-      setError(e.response?.data?.message || 'OTP verification failed');
-      setLoading(false);
-      return { success: false };
+      // Proceed with local logout regardless of server
     }
-  }, []);
-
-  const resendOTP = useCallback(async (email) => {
-    setLoading(true); setError('');
-    try {
-      const res = await api.resendOTP({ email });
-      setLoading(false);
-      return { success: true, message: res.data.message, debug: res.data.debug };
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to resend OTP');
-      setLoading(false);
-      return { success: false };
-    }
-  }, []);
-
-  const logout = useCallback(() => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('refresh_token');
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, register, verifyOTP, resendOTP, logout, clearError }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout, clearError }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

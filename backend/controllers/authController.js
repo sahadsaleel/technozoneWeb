@@ -2,238 +2,176 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Shop = require('../models/Shop');
-const sendEmail = require('../utils/sendEmail');
 
-// Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret';
+
+// Utility Functions
+const hash_password = async (password) => {
+  const salt = await bcrypt.genSalt(BCRYPT_ROUNDS);
+  return await bcrypt.hash(password, salt);
 };
 
-// Generate random 6 digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const verify_password = async (plain, hashed) => {
+  return await bcrypt.compare(plain, hashed);
+};
+
+const create_access_token = (user_id) => {
+  return jwt.sign({ id: user_id }, JWT_SECRET, { expiresIn: '15m' });
+};
+
+const create_refresh_token = (user_id) => {
+  return jwt.sign({ id: user_id }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+};
 
 // @desc    Register a new user & create their shop
-// @route   POST /api/auth/register
+// @route   POST /auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, shopName, phone } = req.body;
+    const { username, password, confirm_password, shopName } = req.body;
 
-    if (!name || !email || !password || !shopName) {
-      return res.status(400).json({ message: 'Please add all required fields' });
+    if (!username || !password || !confirm_password) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    if (username.length < 3 || /\s/.test(username)) {
+      return res.status(400).json({ message: 'Username must be at least 3 characters and contain no spaces' });
+    }
+
+    if (password.length < 6 || !/\d/.test(password)) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters and contain a number' });
+    }
+
+    if (password !== confirm_password) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    const usernameLower = username.toLowerCase();
+    const existingUser = await User.findOne({ username: usernameLower });
+    
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const password_hash = await hash_password(password);
 
-    // Create a generic shop for the new user (they are the owner)
-    // In local DB, we can let the utility generate IDs or handle it here
     const shop = await Shop.create({
-      name: shopName,
-      owner: null, // Will update after user creation or vice-versa
-      phone: phone || ''
+      name: shopName || `${username}'s Shop`,
+      owner: null,
+      phone: ''
     });
 
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
+      username: usernameLower,
+      password_hash: password_hash,
       shopId: shop._id,
       role: 'admin'
     });
 
-    // Update shop owner
     await Shop.findByIdAndUpdate(shop._id, { owner: user._id });
 
-    if (user) {
-      res.status(201).json({
-        message: 'User registered successfully. Please login.',
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
+    const access_token = create_access_token(user._id);
+    const refresh_token = create_refresh_token(user._id);
+
+    res.status(201).json({
+      message: 'Account created',
+      access_token,
+      refresh_token
+    });
   } catch (error) {
     console.error('REGISTRATION ERROR:', error);
-    res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Authenticate a user & send OTP
-// @route   POST /api/auth/login
+// @desc    Authenticate a user
+// @route   POST /auth/login
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    const user = await User.findOne({ email });
-
-    if (user && (await bcrypt.compare(password, user.password))) {
-      // Generate OTP
-      const otp = generateOTP();
-      const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-      
-      await User.findByIdAndUpdate(user._id, { 
-        otp, 
-        otpExpires 
-      });
-
-      // Send OTP via email (Non-blocking to prevent UI hang)
-      // Send OTP via email
-      try {
-        if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-          console.log(`🔍 Credentials found (${process.env.EMAIL_USERNAME}). Initiating send for ${email}...`);
-          
-          // Fire and forget (don't await) to prevent blocking the response
-          sendEmail({
-             email: user.email,
-             subject: 'TechnoZone - Login OTP Verification',
-             message: `Your OTP for login is: ${otp}. It is valid for 10 minutes.`,
-             html: `<p>Your OTP for TechnoZone login is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
-          }).catch(err => console.error('📧 Delayed Login Email Error:', err));
-          
-          console.log(`📨 OTP send request handed over to transporter for ${email}`);
-        } else {
-           console.log(`⚠️ EMAIL CREDENTIALS MISSING. Checked env but found no username/password. Logging OTP to console: ${otp}`);
-        }
-      } catch(err) {
-        console.error('📧 CRITICAL: Email delivery failed during login:', err.message);
-        // We still let the user proceed to the verification screen 
-        // in case they want to retry or check logs
-      }
-
-      res.json({
-        requiresOTP: true,
-        message: 'OTP sent to email'
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid credentials' });
+    if (!username || !password) {
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
-  } catch (error) {
-    console.error('LOGIN ERROR:', error);
-    res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
-  }
-};
 
-// @desc    Resend OTP
-// @route   POST /api/auth/resend-otp
-// @access  Public
-const resendOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username: username.toLowerCase() });
 
-    if (!user) return res.status(400).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
 
-    const otp = generateOTP();
-    const otpExpires = Date.now() + 10 * 60 * 1000;
+    const isMatch = await verify_password(password, user.password_hash);
     
-    await User.findByIdAndUpdate(user._id, { 
-      otp, 
-      otpExpires 
-    });
-
-    // Send OTP via email (Awaiting for logging)
-    try {
-      if(process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD && process.env.EMAIL_USERNAME !== 'your_email@gmail.com') {
-        console.log(`🔍 Resending OTP to ${email}...`);
-        sendEmail({
-           email: user.email,
-           subject: 'TechnoZone - Resent OTP Verification',
-           message: `Your new OTP for login is: ${otp}`,
-           html: `<p>Your new OTP for TechnoZone login is: <b>${otp}</b></p>`
-        }).catch(err => console.error('📧 Delayed Resend Error:', err));
-        console.log(`📨 Resent OTP successfully for ${email}`);
-      } else {
-        console.log(`⚠️ EMAIL CREDENTIALS MISSING for Resend. OTP for ${email} is ${otp}`);
-      }
-    } catch(err) {
-      console.error('📧 CRITICAL: Email delivery failed during resend:', err.message);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    res.json({ 
-      message: 'New OTP sent'
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// @desc    Verify OTP for login
-// @route   POST /api/auth/verify-otp
-// @access  Public
-const verifyOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    const user = await User.findOne({ email });
-
-    if (!user) return res.status(400).json({ message: 'User not found' });
-
-    if (user.otp !== otp || user.otpExpires < Date.now()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
-    }
-
-    await User.findByIdAndUpdate(user._id, {
-      otp: null,
-      otpExpires: null,
-      isVerified: true
-    });
+    const access_token = create_access_token(user._id);
+    const refresh_token = create_refresh_token(user._id);
 
     res.json({
-      token: generateToken(user._id),
+      access_token,
+      refresh_token,
       user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        shopId: user.shopId
+        id: user._id,
+        username: user.username
       }
     });
-
   } catch (error) {
-    console.error(error);
+    console.error('LOGIN ERROR:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Test Email functionality
-// @route   POST /api/auth/test-email
-// @access  Public (for debugging)
-const testEmail = async (req, res) => {
+// @desc    Logout user (invalidate session)
+// @route   POST /auth/logout
+// @access  Public
+const logoutUser = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-
-    console.log(`🧪 Test email requested for: ${email}`);
-    const info = await sendEmail({
-      email,
-      subject: 'TechnoZone - Nodemailer Test',
-      message: 'This is a test email from TechnoZone to verify Nodemailer configuration.',
-      html: '<h1>TechnoZone Test</h1><p>If you see this, Nodemailer is working!</p>'
-    });
-
-    res.json({ message: 'Test email sent successfully', info });
+    // In a fully stateless JWT system, true invalidation requires a Redis blacklist
+    // Since we are strictly replacing OTP, we mock the invalidation logic by terminating the client session
+    res.json({ message: 'Logged out' });
   } catch (error) {
-    console.error('🧪 TEST EMAIL ERROR:', error);
-    res.status(500).json({ 
-      message: 'Test email failed', 
-      error: error.message,
-      code: error.code,
-      command: error.command
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Get current user info
+// @route   GET /auth/me
+// @access  Private
+const getMe = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const user = await User.findById(decoded.id).select('-password_hash');
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User mapping lost' });
+    }
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      created_at: user.created_at
     });
+  } catch (error) {
+    console.error('TOKEN VERIFICATION ERROR:', error);
+    return res.status(401).json({ message: 'Not authorized - Token failed' });
   }
 };
 
 module.exports = {
   registerUser,
   loginUser,
-  verifyOTP,
-  resendOTP,
-  testEmail
+  logoutUser,
+  getMe
 };
