@@ -4,12 +4,13 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
+app.set('trust proxy', 1); // ← add this line
 
 const fs = require('fs');
 
 // Middleware
 app.use(cors({
-  origin: '*', // For now keep it open, but allow specific headers
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -28,7 +29,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TechnoZone API is running with MongoDB' });
 });
 
-// Root Route 
 app.get('/', (req, res) => {
   res.send(`
     <style>body{font-family:sans-serif;padding:2rem;line-height:1.5;}</style>
@@ -39,7 +39,6 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
-
 
 const PORT = process.env.PORT || 5000;
 
