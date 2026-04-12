@@ -103,6 +103,14 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
+    // Safety check for legacy accounts missing a password hash
+    if (!user.password_hash) {
+      console.error(`❌ LOGIN ERROR: User "${username}" found but has no password_hash. This may be a legacy account.`);
+      return res.status(401).json({ 
+        message: 'Account setup incomplete. Please contact support or reset password.' 
+      });
+    }
+
     const isMatch = await verify_password(password, user.password_hash);
     
     if (!isMatch) {
