@@ -50,7 +50,7 @@ const registerUser = async (req, res) => {
 
     const usernameLower = username.toLowerCase();
     const existingUser = await User.findOne({ username: usernameLower });
-    
+
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -106,13 +106,13 @@ const loginUser = async (req, res) => {
     // Safety check for legacy accounts missing a password hash
     if (!user.password_hash) {
       console.error(`❌ LOGIN ERROR: User "${username}" found but has no password_hash. This may be a legacy account.`);
-      return res.status(401).json({ 
-        message: 'Account setup incomplete. Please contact support or reset password.' 
+      return res.status(401).json({
+        message: 'Account setup incomplete. Please contact support or reset password.'
       });
     }
 
     const isMatch = await verify_password(password, user.password_hash);
-    
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -161,7 +161,7 @@ const getMe = async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = await User.findById(decoded.id).select('-password_hash');
-    
+
     if (!user) {
       return res.status(401).json({ message: 'User mapping lost' });
     }
@@ -177,9 +177,37 @@ const getMe = async (req, res) => {
   }
 };
 
+// @desc    Refresh access token using refresh token
+// @route   POST /auth/refresh
+// @access  Public
+const refreshToken = async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+      return res.status(401).json({ message: 'Refresh token required' });
+    }
+
+    const decoded = jwt.verify(refresh_token, JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.id).select('-password_hash');
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    const new_access_token = create_access_token(user._id);
+
+    res.json({ access_token: new_access_token });
+  } catch (error) {
+    console.error('REFRESH ERROR:', error);
+    return res.status(401).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
-  getMe
+  getMe,
+  refreshToken
 };
