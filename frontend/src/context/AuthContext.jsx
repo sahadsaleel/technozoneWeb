@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -7,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const clearError = () => setError('');
 
@@ -23,33 +25,29 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     };
-
     initAuth();
   }, []);
 
   const login = useCallback(async (username, password) => {
-    setLoading(true); 
+    setLoading(true);
     setError('');
     try {
       const res = await api.login({ username, password });
-      
       localStorage.setItem('token', res.data.access_token);
-      // Not storing refresh_token in localStorage explicitly unless required, but let's store it
       localStorage.setItem('refresh_token', res.data.refresh_token);
-      
       setUser(res.data.user);
       setLoading(false);
+      navigate('/', { replace: true }); // replace removes /login from history
       return { success: true };
     } catch (e) {
-      // Return 401 generic failure explicitly
-      setError('Invalid username or password'); 
+      setError('Invalid username or password');
       setLoading(false);
       return { success: false };
     }
-  }, []);
+  }, [navigate]);
 
   const register = useCallback(async (data) => {
-    setLoading(true); 
+    setLoading(true);
     setError('');
     try {
       const res = await api.register(data);
@@ -66,12 +64,13 @@ export function AuthProvider({ children }) {
     try {
       await api.logout();
     } catch (e) {
-      // Proceed with local logout regardless of server
+      // proceed regardless
     }
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     setUser(null);
-  }, []);
+    navigate('/login', { replace: true }); // replace removes /dashboard from history
+  }, [navigate]);
 
   return (
     <AuthContext.Provider value={{ user, loading, error, login, register, logout, clearError }}>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import PrivateRoute from './components/PrivateRoute';
+import PublicRoute from './components/PublicRoute';
 import MainLayout from './components/layout/MainLayout';
 
 import Login from './pages/Auth/Login';
@@ -21,9 +22,9 @@ export default function App() {
       <AuthProvider>
         <AppProvider>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+
             <Route element={<PrivateRoute />}>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Dashboard />} />
@@ -35,7 +36,7 @@ export default function App() {
                 <Route path="/ledger" element={<Ledger />} />
               </Route>
             </Route>
-            
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppProvider>
